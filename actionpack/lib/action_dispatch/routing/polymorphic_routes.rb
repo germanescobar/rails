@@ -264,7 +264,8 @@ module ActionDispatch
             record_list = list.dup
             record      = record_list.pop
 
-            args = []
+            args      = []
+            namespace = ""
 
             route  = record_list.map { |parent|
               case parent
@@ -272,26 +273,30 @@ module ActionDispatch
                 parent.to_s
               when Class
                 args << parent
+                namespace = parent.model_name.to_s.deconstantize.underscore.gsub("/", "_")
                 parent.model_name.singular_route_key
               else
                 args << parent.to_model
+                namespace = parent.to_model.model_name.to_s.deconstantize.underscore.gsub("/", "_")
                 parent.to_model.model_name.singular_route_key
               end
             }
+
+            namespace += "_" unless namespace.blank?
 
             route <<
             case record
             when Symbol, String
               record.to_s
             when Class
-              @key_strategy.call record.model_name
+              @key_strategy.call(record.model_name).sub /^#{namespace}/, ""
             else
               model = record.to_model
               if model.persisted?
                 args << model
-                model.model_name.singular_route_key
+                model.model_name.singular_route_key.sub /^#{namespace}/, ""
               else
-                @key_strategy.call model.model_name
+                @key_strategy.call(model.model_name).sub /^#{namespace}/, ""
               end
             end
 
